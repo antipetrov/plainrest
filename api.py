@@ -36,37 +36,78 @@ GENDERS = {
 }
 
 
-class CharField(object):
-    pass
+class Field(object):
+    def __init__(self):
+        self.value = None
+
+    def __set__(self, obj, value):
+        self.validate(value)
+        self.value = value
+        print('Field set', self.__dict__)
+    
+
+    def __get__(self, obj, type=None):
+        return self.value
+
+    def validate(self, value):
+        raise NotImplementedError()
 
 
-class ArgumentsField(object):
-    pass
+class CharField(Field):
+    def __init__(self, required, nullable):
+        super(CharField, self).__init__()
+        self.required = required
+        self.nullable = nullable
+
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise AttributeError('%s value must be str' % self.__class__.__name__)
+
+        if not self.nullable and value == None:
+            raise AttributeError('%s value cannot be None' % self.__class__.__name__)
+
+
+class ArgumentsField(Field):
+    def __init__(self, required, nullable):
+        self.required = required
+        self.nullable = nullable
+
+    def validate(self, value):
+        if not self.nullable and value == None:
+            raise AttributeError('%s value cannot be None' % self.__class__.__name__)
+
+        if not isinstance(value, dict):
+            raise AttributeError('%s value must be dict' % self.__class__.__name__)
 
 
 class EmailField(CharField):
     pass
 
-
 class PhoneField(object):
-    pass
+    def __init__(self, required, nullable):
+        self.required = required
+        self.nullable = nullable
 
 
 class DateField(object):
-    pass
+    def __init__(self, required, nullable):
+        self.required = required
+        self.nullable = nullable
 
 
 class BirthDayField(object):
-    pass
+    def __init__(self, required):
+        self.required = required
 
 
 class GenderField(object):
-    pass
-
+    def __init__(self, required, nullable):
+        self.required = required
+        self.nullable = nullable
 
 class ClientIDsField(object):
-    pass
-
+    def __init__(self, required ):
+        self.required = required
 
 class ClientsInterestsRequest(object):
     client_ids = ClientIDsField(required=True)
@@ -78,11 +119,18 @@ class OnlineScoreRequest(object):
     last_name = CharField(required=False, nullable=True)
     email = EmailField(required=False, nullable=True)
     phone = PhoneField(required=False, nullable=True)
-    birthday = BirthDayField(required=False, nullable=True)
+    birthday = BirthDayField(required=False)
     gender = GenderField(required=False, nullable=True)
 
 
+
 class MethodRequest(object):
+
+    #TODO: нужно что-то лучшее чтобы класс не принял ничего кроме полей-дескрипторов
+    def __init__(self, request):
+        for k,v in request.iteritems():
+            self.__setattr__(k, v)
+
     account = CharField(required=False, nullable=True)
     login = CharField(required=True, nullable=True)
     token = CharField(required=True, nullable=True)
@@ -92,7 +140,6 @@ class MethodRequest(object):
     @property
     def is_admin(self):
         return self.login == ADMIN_LOGIN
-
 
 def check_auth(request):
     if request.login == ADMIN_LOGIN:
@@ -105,6 +152,22 @@ def check_auth(request):
 
 
 def method_handler(request, ctx, store):
+    api_handlers = {
+        'online_score':OnlineScoreRequest, 
+        'client_instrests':ClientsInterestsRequest
+    }
+
+    try:
+        #here be validation
+        valid_api_request = MethodRequest(request)
+        print(api_request.__dict__)
+    except:
+        print('validate error')
+
+    if valid_api_request:
+        api_handlers
+
+
     response, code = None, None
     return response, code
 
