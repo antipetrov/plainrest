@@ -10,6 +10,8 @@ import uuid
 from optparse import OptionParser
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
+import scoring
+
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
 ADMIN_SALT = "42"
@@ -68,6 +70,7 @@ class CharField(Field):
 
 
 class ArgumentsField(Field):
+    
     def __init__(self, required, nullable):
         self.required = required
         self.nullable = nullable
@@ -76,23 +79,37 @@ class ArgumentsField(Field):
         if not self.nullable and value == None:
             raise AttributeError('%s value cannot be None' % self.__class__.__name__)
 
-        if not isinstance(value, dict):
+        if not value ==None and not isinstance(value, dict):
             raise AttributeError('%s value must be dict' % self.__class__.__name__)
 
 
 class EmailField(CharField):
-    pass
+
+    def validate(self, value):
+        super(EmailField, self).validate()
+
+        at_pos = value.find('@')
+        dot_pos =value.rfind('.')
+
+        if at_pos == -1 or dot_pos == -1 or at_pos > dot_pos:
+            raise AttributeError('%s value invalid' % self.__class__.__name__)
 
 class PhoneField(object):
     def __init__(self, required, nullable):
         self.required = required
         self.nullable = nullable
 
+    def validate(self, value):
+        super(PhoneField, self).validate()
+
 
 class DateField(object):
     def __init__(self, required, nullable):
         self.required = required
         self.nullable = nullable
+    
+    def validate(self, value):
+        super(PhoneField, self).validate()
 
 
 class BirthDayField(object):
@@ -109,12 +126,24 @@ class ClientIDsField(object):
     def __init__(self, required ):
         self.required = required
 
-class ClientsInterestsRequest(object):
+class ApiRequest(object):
+    #TODO: нужно что-то лучшее чтобы класс не принял ничего кроме полей-дескрипторов
+    def __init__(self, request):
+        for k,v in request.iteritems():
+            self.__setattr__(k, v)
+
+    def validate(self):
+        raise NotImplementedError()
+
+    def process(self):
+        raise NotImplementedError()
+
+class ClientsInterestsRequest(ApiRequest):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
 
 
-class OnlineScoreRequest(object):
+class OnlineScoreRequest(ApiRequest):
     first_name = CharField(required=False, nullable=True)
     last_name = CharField(required=False, nullable=True)
     email = EmailField(required=False, nullable=True)
@@ -122,14 +151,22 @@ class OnlineScoreRequest(object):
     birthday = BirthDayField(required=False)
     gender = GenderField(required=False, nullable=True)
 
+    def process(self):
+        score = scoring.get_score(self.store, 
+                          self.phone, 
+                          self.email, 
+                          self.birthday,
+                          self.gender, 
+                          self.first_name, 
+                          self.last_name)
+
+        return score
 
 
-class MethodRequest(object):
 
-    #TODO: нужно что-то лучшее чтобы класс не принял ничего кроме полей-дескрипторов
-    def __init__(self, request):
-        for k,v in request.iteritems():
-            self.__setattr__(k, v)
+
+class MethodRequest(ApiRequest):
+
 
     account = CharField(required=False, nullable=True)
     login = CharField(required=True, nullable=True)
@@ -140,6 +177,22 @@ class MethodRequest(object):
     @property
     def is_admin(self):
         return self.login == ADMIN_LOGIN
+
+    def __str__(self):
+        return "<request %s(%s) auth=%s:%s>" % (self.method, json.dumps(self.arguments), self.login, self.token)
+
+    def validate(self):
+        return True
+
+    def process(self):
+        if self.method == 'online_score':
+            api_request = OnlineScoreRequest(**arguments) 
+        elif self.method == 'client_instrests':
+            api_request = ClientsInterestsRequest(**arguments)
+
+        api_request.process()
+
+
 
 def check_auth(request):
     if request.login == ADMIN_LOGIN:
@@ -160,12 +213,11 @@ def method_handler(request, ctx, store):
     try:
         #here be validation
         valid_api_request = MethodRequest(request)
-        print(api_request.__dict__)
-    except:
-        print('validate error')
+        print(api_request)
+    except Exception as e:
+        print('validate error %s'%e.message)
+        pass
 
-    if valid_api_request:
-        api_handlers
 
 
     response, code = None, None

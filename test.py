@@ -16,7 +16,7 @@ class TestSuite(unittest.TestCase):
         _, code = self.get_response({})
         self.assertEqual(api.INVALID_REQUEST, code)
 
-    def test_method_request_unvalidate(self):
+    def test_method_request_validation(self):
         request_data = {"account": "test_partner", 
                         "login": "test_login", 
                         "method": "online_score", 
