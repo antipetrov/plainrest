@@ -38,9 +38,19 @@ GENDERS = {
     FEMALE: "female",
 }
 
+class FieldValidationError(Exception):
+    def __init__(self, message):
+        super(FieldValidationError, self).__init__(message)
+
+        self.code = INVALID_REQUEST
+
+class RequestValidationError(Exception):
+    pass
+
+
 
 class Field(object):
-    def __init__(self, request=False, nullable=True):
+    def __init__(self, required=False, nullable=True):
         self.required = required
         self.nullable = nullable
 
@@ -54,11 +64,9 @@ class Field(object):
         return self.value
 
     def validate(self, value):
-        if not isinstance(value, str):
-            raise AttributeError('%s value must be str' % self.__class__.__name__)
 
         if not self.nullable and value == None:
-            raise AttributeError('%s value cannot be None' % self.__class__.__name__)
+            raise FieldValidationError('%s value cannot be None' % self.__class__.__name__)
 
         return value
 
@@ -67,14 +75,17 @@ class CharField(Field):
     def __init__(self, required, nullable):
         super(CharField, self).__init__()
 
-class ArgumentsField(Field):
-    
-    def __init__(self, required, nullable):
-        self.required = required
-        self.nullable = nullable
-
     def validate(self, value):
-        super(ArgumentsField, self).validate(value)
+        value = super(CharField, self).validate(value) 
+
+        if not isinstance(value, str):
+            raise FieldValidationError('%s value must be str' % self.__class__.__name__)
+
+        return value
+
+class ArgumentsField(Field):
+    def validate(self, value):
+        value = super(ArgumentsField, self).validate(value)
 
         if value and (not value ==None and not isinstance(value, dict)):
             raise AttributeError('%s value must be dict' % self.__class__.__name__)
@@ -84,7 +95,7 @@ class ArgumentsField(Field):
 class EmailField(CharField):
 
     def validate(self, value):
-        super(EmailField, self).validate(value)
+        value = super(EmailField, self).validate(value)
 
         at_pos = value.find('@')
         if value and value.find('@') == -1:
@@ -93,81 +104,84 @@ class EmailField(CharField):
         return value
 
 class PhoneField(Field):
-    def __init__(self, required, nullable):
-        self.required = required
-        self.nullable = nullable
-
     def validate(self, value):
         value = super(PhoneField, self).validate(value)
 
-        if value and (not value.startswith('7') or not len(value)==11)):
+        if value and (not value.startswith('7') or not len(value)==11):
             raise AttributeError('%s value invalid: %s' % self.__class__.__name__, value)
 
         return value
 
 
 class DateField(Field):
-    def __init__(self, required, nullable):
-        self.required = required
-        self.nullable = nullable
     
     def validate(self, value):
         value = super(DateField, self).validate(value)
 
         if value:
-            valid_datetime = datetime.strptime(value, '%d.%m.%Y')
-            raise AttributeError('%s value invalid: %s' % self.__class__.__name__, value)
-
-        return valid_datetime
-
-
-class BirthDayField(DateField):
-    def __init__(self, required):
-        self.required = required
-
-    def validate(self, value):
-        value = super(DateField, self).validate(value)
-
-        if value:
-            if datetime.now().year - value.year > 70:
-                raise AttributeError('%s date invalid: %s > 70 years back' % self.__class__.__name__, value)
+            try:
+                value = datetime.strptime(value, '%d.%m.%Y')
+            except ValueError:
+                raise AttributeError('%s date invalid: %s' % self.__class__.__name__, value)
 
         return value
 
 
-class GenderField(Field):
-    def __init__(self, required, nullable):
-        self.required = required
-        self.nullable = nullable
+class BirthDayField(DateField):
 
     def validate(self, value):
-        super(GenderField, self).validate()
+        value = super(BirthDayField, self).validate(value)
+
+        if value:
+            if datetime.now().year - value.year > 70:
+                raise AttributeError('%s date invalid: %s (must be <70 years back)' % self.__class__.__name__, value)
+
+        return value
+
+
+class IntField(Field):
+    def validate(self, value):
+        value = super(IntField, self).validate(value)
+
+        try:
+            value = int(value)
+        except ValueError:
+            raise AttributeError('%s integer invalid: %s' % self.__class__.__name__, value)
+
+        return value
+
+
+class GenderField(IntField):
+
+    def validate(self, value):
+        value = super(GenderField, self).validate(value)
         
         if value:
-            if not value in (0,1) 
-                raise AttributeError('%s value invalid: %s' % self.__class__.__name__, value)
+            if not int(value) in GENDERS.keys():
+                raise AttributeError('%s value invalid: %d' % (self.__class__.__name__, value))
 
         return value
 
        
-
 class ClientIDsField(Field):
-    def __init__(self, required ):
-        self.required = required
 
     def validate(self, value):
         super(BirthDayField, self).validate()
-        #todo: check if 1 of 2
 
 
 class ApiRequest(object):
-    #TODO: нужно что-то лучшее чтобы класс не принял ничего кроме полей-дескрипторов
+    
     def __init__(self, fields):
-        for k,v in fields.iteritems():
-            self.__setattr__(k, v)
+        self.fields = {k:v for k,v in self.__class__.__dict__.iteritems() if issubclass(v.__class__, Field)}
+
+        for k,v in self.fields.iteritems():
+            self.__setattr__(k, fields.get(k, None)) 
 
         # run request-wide validation
         self.validate()
+
+    def __str__(self):
+        return "<ApiRequest %s fields: >" % (self.__class__.__name__, " ".join(["%s:%s"%(k,v) for k,v in self.fields.iteritems()]))
 
     def validate(self):
         raise NotImplementedError()
@@ -189,6 +203,10 @@ class OnlineScoreRequest(ApiRequest):
     gender = GenderField(required=False, nullable=True)
 
     def validate(self):
+
+        print('validate')
+        print(self.email)
+        print(self.phone)
         if not self.email and not self.phone:
             raise AttributeError('Phone or email required')
 
@@ -198,10 +216,12 @@ class OnlineScoreRequest(ApiRequest):
         if not self.birthday and not self.gender:
             raise AttributeError('birthdate or gender required')
 
+        return self
+
 
 
     def process(self):
-        score = scoring.get_score(self.store, 
+        score = scoring.get_score(None, 
                                   self.phone, 
                                   self.email, 
                                   self.birthday,
@@ -209,7 +229,7 @@ class OnlineScoreRequest(ApiRequest):
                                   self.first_name, 
                                   self.last_name)
 
-        return score
+        return  {"score": score}
 
 
 
@@ -245,10 +265,11 @@ class MethodRequest(ApiRequest):
         except KeyError as e:
             raise AttributeError('Method "%s" not found' % self.method)
 
-        handler = handler_class(**arguments) 
+        handler = handler_class(self.arguments) 
         handler.validate()
-        handler.process()
+        result = handler.process()
 
+        return result
 
 
 def check_auth(request):
@@ -263,18 +284,14 @@ def check_auth(request):
 
 def method_handler(request, ctx, store):
 
-
     try:
-        #here be validation
-        valid_api_request = MethodRequest(request)
-        print(api_request)
+        api_request = MethodRequest(request)
+        response = api_request.process()
+        code = 200
     except Exception as e:
-        print('validate error %s'%e.message)
-        pass
+        return 'Error %s'%e.message, INVALID_REQUEST
 
-
-
-    response, code = None, None
+    #todo: update ctx - has
     return response, code
 
 
