@@ -48,6 +48,9 @@ class ValidationError(Exception):
         super(ValidationError, self).__init__(message)
         self.field = field
 
+class AuthError(Exception):
+    pass    
+
 class Field(object):
     def __init__(self, required=False, nullable=True):
         self.required = required
@@ -63,7 +66,7 @@ class Field(object):
         return self.value
 
     def _field_error(self, message):
-        message = "%s: %s" % (self.__class__.__name__, message)
+        message = "%s %s" % (self.__class__.__name__, message)
         return FieldValidationError(message)
 
     def validate(self, value):
@@ -79,7 +82,7 @@ class CharField(Field):
     def validate(self, value):
         value = super(CharField, self).validate(value) 
 
-        if value and not isinstance(value, str):
+        if value and type(value) in (dict, list, tuple):
             raise self._field_error('must be string')
 
         return value
@@ -180,24 +183,23 @@ class ClientIDsField(Field):
                 except ValueError:
                     raise self._field_error('values must be integers')
 
-        print('int list', value)
-
         return value
 
 class ApiRequest(object):
     
-    def __init__(self, fields):
+    def __init__(self, request):
+        self.request = request
         self.fields = {k:v for k,v in self.__class__.__dict__.iteritems() if issubclass(v.__class__, Field)}
 
         for k,v in self.fields.iteritems():
             try:
-                print('assign ', k, fields.get(k, None))
-                self.__setattr__(k, fields.get(k, None)) # field vailues get validated here
+                self.__setattr__(k, request.get(k, None)) # field vailues get validated here
             except FieldValidationError as e:
                 raise ValidationError(message=e.message, field=k)
 
         # run request-wide validation
         self.validate()
+
 
     def __str__(self):
         return "<ApiRequest %s fields: >" % (self.__class__.__name__, " ".join(["%s:%s"%(k,v) for k,v in self.fields.iteritems()]))
@@ -205,7 +207,7 @@ class ApiRequest(object):
     def validate(self):
         raise NotImplementedError()
 
-    def process(self):
+    def process(self, ctx=None, store=None):
         raise NotImplementedError()
 
 class ClientsInterestsRequest(ApiRequest):
@@ -215,12 +217,12 @@ class ClientsInterestsRequest(ApiRequest):
     def validate(self):
         return self
 
-    def process(self):
+    def process(self, ctx=None, store=None):
         result = {}
         for cid in self.client_ids:
             result[cid] = scoring.get_interests(None, cid)
 
-
+        ctx.update({'nclients':len(self.client_ids)})
         return result
 
 
@@ -240,19 +242,11 @@ class OnlineScoreRequest(ApiRequest):
            return self
 
         else:
-            raise ValidationError('One of pairs (phone, email) or '
+            raise ValidationError('None of the pairs (phone, email) or '
                                   '(first_name, last_name) or '
-                                  '(birthday, gender) needs to be passed')
+                                  '(birthday, gender) passed')
 
-        # if not self.first_name and not self.last_name:
-        #     raise ValidationError('first name or last name required')
-
-        # if not self.birthday and not self.gender:
-        #     raise ValidationError('birthdate or gender required')
-
-
-
-    def process(self):
+    def process(self, ctx=None, store=None):
         score = scoring.get_score(None, 
                                   self.phone, 
                                   self.email, 
@@ -261,9 +255,10 @@ class OnlineScoreRequest(ApiRequest):
                                   self.first_name, 
                                   self.last_name)
 
+        actual_fields = [f for f in self.fields if not f==None]
+        ctx.update({'has':actual_fields})
+
         return  {"score": score}
-
-
 
 
 class MethodRequest(ApiRequest):
@@ -292,6 +287,13 @@ class MethodRequest(ApiRequest):
         return "<request %s(%s) auth=%s:%s>" % (self.method, json.dumps(self.arguments), self.login, self.token)
 
     def validate(self):
+
+        # check auth 
+        logged_id = check_auth(self)
+        if not logged_id:
+            raise AuthError()
+
+        # handle request
         try:
             self.handler_class = self.__method_handlers__[self.method]
         except KeyError as e:
@@ -299,13 +301,13 @@ class MethodRequest(ApiRequest):
 
         return self
 
-    def process(self):
-        return self.handler_class(self.arguments).process()
+    def process(self, ctx, store):
+        return self.handler_class(self.arguments).process(ctx, store)
 
 
 def check_auth(request):
     if request.login == ADMIN_LOGIN:
-        digest = hashlib.sha512(datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT).hexdigest()
+        digest = hashlib.sha512(datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT).hexdigest()
     else:
         digest = hashlib.sha512(request.account + request.login + SALT).hexdigest()
     if digest == request.token:
@@ -316,17 +318,20 @@ def check_auth(request):
 def method_handler(request, ctx, store):
 
     try:
-        api_request = MethodRequest(request)
-        response = api_request.process()
+        api_request = MethodRequest(request['body'])
+        response = api_request.process(ctx, store)
         code = 200
     except ValidationError as e:
         if e.field:
-            error = 'field "%s" error: %s'%(e.field, e.message)
+            response = 'field "%s" error: %s' % (e.field, e.message)
         else:
-            error = e.message
+            response = e.message
 
         code = INVALID_REQUEST
-        response = {'error':error}
+
+    except AuthError:
+        code = FORBIDDEN
+        response = 'Forbidden'
 
     #todo: update ctx - has
     return response, code

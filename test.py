@@ -19,12 +19,27 @@ class TestSuite(unittest.TestCase):
         _, code = self.get_response({})
         self.assertEqual(api.INVALID_REQUEST, code)
 
+    def test_auth_error(self):
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'0', 
+                        "method": "client_instrests", 
+                        "arguments": {
+                            "client_ids":['1','2'],
+                            "date":"-----"
+                            }}
+
+        response, code = api.method_handler(request_data, {}, None)
+
+        self.assertTrue(code, 403)
+        self.assertEqual(response, 'Forbidden')
+
 
     def test_method_online_score(self):
-        request_data = {"account": "test_partner", 
-                        "login": "test_login", 
-                        "method": "online_score", 
-                        "token":'123123', 
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                        "method":"online_score",
                         "arguments": {
                             'phone':'79001112233', 
                             'email':'test@test.test', 
@@ -35,40 +50,29 @@ class TestSuite(unittest.TestCase):
                             }}
 
         response, code = api.method_handler(request_data, {}, None)
-        print(response, code)
         
 
         self.assertIsInstance(response, dict)
         self.assertTrue(response.has_key('score'))
 
     def test_method_online_score_error(self):
-        request_data = {"account": "test_partner", 
-                        "login": "test_login", 
-                        "method": "online_score", 
-                        "token":'123123', 
-                        "arguments": {
-                            # 'phone':'79001112233', 
-                            # 'email':'test@test.test', 
-                            # 'fist_name':'firstname', 
-                            # 'last_name':'lastname',
-                            # 'birthday':'01.01.1988',
-                            # 'gender':'0',
-                            }}
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                        "method":"online_score",
+                        "arguments": {}}
 
         response, code = api.method_handler(request_data, {}, None)
-        print(response, code)
 
         self.assertEqual(code, 422)
-        self.assertIsInstance(response, dict)
-        self.assertTrue(response.has_key('error'))
-        self.assertTrue(response['error'].find('phone') > -1)
+        self.assertTrue(response.find('phone') > -1)
 
 
     def test_method_client_interests(self):
-        request_data = {"account": "test_partner", 
-                        "login": "test_login", 
-                        "method": "client_instrests", 
-                        "token":'123123', 
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                        "method":"client_instrests",
                         "arguments": {
                             "client_ids":['1','2'],
                             "date":"01.02.2008"
@@ -82,10 +86,10 @@ class TestSuite(unittest.TestCase):
         self.assertTrue(response.has_key(2))
 
     def test_method_client_interests_error(self):
-        request_data = {"account": "test_partner", 
-                        "login": "test_login", 
-                        "method": "client_instrests", 
-                        "token":'123123', 
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                        "method":"client_instrests",
                         "arguments": {
                             "client_ids":['1','2'],
                             "date":"-----"
@@ -94,9 +98,62 @@ class TestSuite(unittest.TestCase):
         response, code = api.method_handler(request_data, {}, None)
         
         self.assertEqual(code, 422)
-        self.assertIsInstance(response, dict)
-        self.assertTrue(response.has_key('error'))
-        self.assertTrue(response['error'].find('date') > -1) # в ошибке упоминается имя пофейленного поля
+        self.assertTrue(response.find('date') > -1) # в ошибке упоминается имя пофейленного поля
+
+    def test_context_score(self):
+        request_data = {"account": "111", 
+                        "login": "test", 
+                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                        "method":"online_score",
+                        "arguments": {
+                            'phone':'79001112233', 
+                            'email':'test@test.test', 
+                            'first_name':'firstname', 
+                            'last_name':'lastname',
+                            'birthday':'01.01.1988',
+                            'gender':'0',
+                            }}
+
+        ctx = {}
+        response, code = api.method_handler(request_data, ctx, None)
+        
+        self.assertEqual(ctx.has_key('has'), True)
+        self.assertEqual(ctx['has'], request_data['arguments'].keys())
+
+    def test_context_interests(self):
+        request_data = {"account": "111", 
+                "login": "test", 
+                "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+                "method":"client_instrests",
+                "arguments": {
+                    "client_ids":['1','2'],
+                    "date":"01.02.2008"
+                    }}
+
+        ctx = {}
+        response, code = api.method_handler(request_data, ctx, None)
+        
+        self.assertEqual(ctx.has_key('nclients'), True)
+        self.assertEqual(ctx['nclients'], 2)
+
+    # def test_full_request(self):
+    #     request_data = {"account": "111", 
+    #                     "login": "test", 
+    #                     "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
+    #                     "method":"online_score",
+    #                     "arguments": {
+    #                         'phone':'79001112233', 
+    #                         'email':'test@test.test', 
+    #                         'first_name':'firstname', 
+    #                         'last_name':'lastname',
+    #                         'birthday':'01.01.1988',
+    #                         'gender':'0',
+    #                         }}        
+
+
+
+
+
 
         
 
