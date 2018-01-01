@@ -39,19 +39,25 @@ GENDERS = {
 }
 
 class FieldValidationError(Exception):
+    
     def __init__(self, message):
         super(FieldValidationError, self).__init__(message)
         self.field = None
 
+
 class ValidationError(Exception):
+
     def __init__(self, message, field=None):
         super(ValidationError, self).__init__(message)
         self.field = field
 
+
 class AuthError(Exception):
-    pass    
+    pass
+
 
 class Field(object):
+
     def __init__(self, required=False, nullable=True):
         self.required = required
         self.nullable = nullable
@@ -60,7 +66,6 @@ class Field(object):
 
     def __set__(self, obj, value):
         self.value = self.validate(value)
-    
 
     def __get__(self, obj, type=None):
         return self.value
@@ -80,7 +85,7 @@ class Field(object):
 class CharField(Field):
 
     def validate(self, value):
-        value = super(CharField, self).validate(value) 
+        value = super(CharField, self).validate(value)
 
         if value and type(value) in (dict, list, tuple):
             raise self._field_error('must be string')
@@ -88,10 +93,11 @@ class CharField(Field):
         return value
 
 class ArgumentsField(Field):
+
     def validate(self, value):
         value = super(ArgumentsField, self).validate(value)
 
-        if value and (not value ==None and not isinstance(value, dict)):
+        if value and (not value == None and not isinstance(value, dict)):
             raise self._field_error('needs to be dict')
 
         return value
@@ -103,11 +109,12 @@ class EmailField(CharField):
 
         if value and value.find('@') == -1:
             raise self._field_error('invalid email')
-
-
+        
         return value
+        
 
 class PhoneField(Field):
+
     def validate(self, value):
         value = super(PhoneField, self).validate(value)
 
@@ -144,6 +151,7 @@ class BirthDayField(DateField):
 
 
 class IntField(Field):
+
     def validate(self, value):
         value = super(IntField, self).validate(value)
 
