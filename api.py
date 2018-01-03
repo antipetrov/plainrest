@@ -75,7 +75,6 @@ class Field(object):
         return FieldValidationError(message)
 
     def validate(self, value):
-
         if not self.nullable and value == None:
             raise self._field_error('cannot be None')
 
@@ -195,13 +194,29 @@ class ClientIDsField(Field):
 
 class ApiRequest(object):
     
-    def __init__(self, request):
+    def __init__(self, request_data):
         self.request = request
         self.fields = {k:v for k,v in self.__class__.__dict__.iteritems() if issubclass(v.__class__, Field)}
 
+        # check keys -  if all required data passed
+        requireds = set(k for k,v in self.__class__.__dict__.iteritems() if v.required)
+        remains =  requireds - set(request_data.keys())
+        if remains:
+            raise ValidationError(message="required", field=requireds.pop())
+
+
+        # assing and validate fields
+        for k,v in request_data.iteritems():
+            try:
+                self.__setattr__(k, v) # field vailues get validated here
+            except FieldValidationError as e:
+                raise ValidationError(message=e.message, field=k)
+
+
+
         for k,v in self.fields.iteritems():
             try:
-                self.__setattr__(k, request.get(k, None)) # field vailues get validated here
+                self.__setattr__(k, request_data.get(k,None)) # field vailues get validated here
             except FieldValidationError as e:
                 raise ValidationError(message=e.message, field=k)
 

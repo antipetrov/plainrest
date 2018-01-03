@@ -2,8 +2,29 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-
 import api
+
+class TestFields(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_charfield(self):
+        class FieldContainer(object):
+            char_field = api.CharField(nullable=False)
+
+        contaier = FieldContainer()
+        contaier.char_field = 'str'
+        self.assertEqual(contaier.char_field, 'str')
+
+        contaier.char_field = 1
+        self.assertEqual(contaier.char_field, 1)
+        
+        with self.assertRaises(api.FieldValidationError):
+            contaier.char_field = None
+            print(field)
+
+
 
 
 class TestSuite(unittest.TestCase):
@@ -114,11 +135,10 @@ class TestSuite(unittest.TestCase):
                             'gender':'0',
                             }}
 
-        ctx = {}
-        response, code = api.method_handler(request_data, ctx, None)
+        response, code = api.method_handler(request_data, self.context, None)
         
-        self.assertEqual(ctx.has_key('has'), True)
-        self.assertEqual(ctx['has'], request_data['arguments'].keys())
+        self.assertEqual(self.context.has_key('has'), True)
+        self.assertEqual(self.context['has'], request_data['arguments'].keys())
 
     def test_context_interests(self):
         request_data = {"account": "111", 
@@ -130,11 +150,10 @@ class TestSuite(unittest.TestCase):
                     "date":"01.02.2008"
                     }}
 
-        ctx = {}
-        response, code = api.method_handler(request_data, ctx, None)
+        response, code = api.method_handler(request_data, self.context, None)
         
-        self.assertEqual(ctx.has_key('nclients'), True)
-        self.assertEqual(ctx['nclients'], 2)
+        self.assertEqual(self.context.has_key('nclients'), True)
+        self.assertEqual(self.context['nclients'], 2)
 
     # def test_full_request(self):
     #     request_data = {"account": "111", 
