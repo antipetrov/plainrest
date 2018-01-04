@@ -1,29 +1,135 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import datetime
 import unittest
 import api
+
+cases = {api.CharField:{'success':[1,None, ]}}
 
 class TestFields(unittest.TestCase):
 
     def setUp(self):
-        pass
-
-    def test_charfield(self):
         class FieldContainer(object):
             char_field = api.CharField(nullable=False)
+            int_field = api.IntField(nullable=False)
+            arg_field = api.ArgumentsField(nullable=False)
+            email_field = api.EmailField(nullable=False)
+            phone_field = api.PhoneField(nullable=False)
+            date_field = api.DateField(nullable=False)
+            birthday_field = api.BirthDayField(nullable=False)
+            gender_field = api.GenderField(nullable=False)
+            ids_field = api.ClientIDsField(nullable=False)
 
-        contaier = FieldContainer()
-        contaier.char_field = 'str'
-        self.assertEqual(contaier.char_field, 'str')
+        self.contaier = FieldContainer()
 
-        contaier.char_field = 1
-        self.assertEqual(contaier.char_field, 1)
+    def test_nullable(self):
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.char_field = None
+
+    def test_char_field(self):
+        self.contaier.char_field = 'str'
+        self.assertEqual(self.contaier.char_field, 'str')
+
+        self.contaier.char_field = 1
+        self.assertEqual(self.contaier.char_field, 1)
+
+    def test_int_field(self):
+        self.contaier.int_field = 1
+        self.assertEqual(self.contaier.int_field, 1)
+
+    def test_int_field_fail(self):
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.int_field = 'str'
+
+    def test_argument_field(self):        
+        value = {'1':'1'}
+        self.contaier.arg_field = value
+        self.assertEqual(self.contaier.arg_field, value)
+
+        value = {}
+        self.contaier.arg_field = value
+        self.assertEqual(self.contaier.arg_field, value)
+
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.arg_field = 'str'
         
         with self.assertRaises(api.FieldValidationError):
-            contaier.char_field = None
-            print(field)
+            self.contaier.arg_field = 1
 
+    def test_email_field(self):        
+        value = 'test@email.com'
+        self.contaier.email_field = value
+        self.assertEqual(self.contaier.email_field, value)
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.email_field = 'test'
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.email_field = 1
+
+    def test_phone_field(self):
+        value = '12345678901'
+        self.contaier.phone_field = value
+        self.assertEqual(self.contaier.phone_field, value)
+        value = 12345678901
+        self.contaier.phone_field = value
+        self.assertEqual(self.contaier.phone_field, value)
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.phone_field = '0000'
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.phone_field = 1234567890123
+
+    def test_date_field(self):
+        self.contaier.date_field = '01.01.2017'
+        self.assertEqual(self.contaier.date_field, datetime.datetime.strptime('01.01.2017', '%d.%m.%Y'))
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.date_field = 'test'
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.date_field = '2019.01.01'
+
+    def test_birthday_field(self):
+        self.contaier.date_field = '01.01.2017'
+        self.assertEqual(self.contaier.date_field, datetime.datetime.strptime('01.01.2017', '%d.%m.%Y'))
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.date_field = '1900.01.01'
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.date_field = '2100.01.01'
+
+    def test_gender_field(self):
+        self.contaier.gender_field = 1
+        self.assertEqual(self.contaier.gender_field, 1)
+
+        self.contaier.gender_field = '0'
+        self.assertEqual(self.contaier.gender_field, 0)
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.gender_field = {}
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.gender_field = 4
+
+    def test_ids_field(self):
+        self.contaier.ids_field = [1,2,3]
+        self.assertEqual(self.contaier.ids_field, [1,2,3])
+        self.contaier.ids_field = ['1','2','3']
+        self.assertEqual(self.contaier.ids_field, [1,2,3])
+        
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.ids_field = 1
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.ids_field = ['a','e']
+
+        with self.assertRaises(api.FieldValidationError):
+            self.contaier.ids_field = ['1',None]
 
 
 

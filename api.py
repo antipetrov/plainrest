@@ -86,7 +86,7 @@ class CharField(Field):
     def validate(self, value):
         value = super(CharField, self).validate(value)
 
-        if value and type(value) in (dict, list, tuple):
+        if not value==None and type(value) in (dict, list, tuple):
             raise self._field_error('must be string')
 
         return value
@@ -96,7 +96,7 @@ class ArgumentsField(Field):
     def validate(self, value):
         value = super(ArgumentsField, self).validate(value)
 
-        if value and (not value == None and not isinstance(value, dict)):
+        if not value==None and not isinstance(value, dict):
             raise self._field_error('needs to be dict')
 
         return value
@@ -106,9 +106,14 @@ class EmailField(CharField):
     def validate(self, value):
         value = super(EmailField, self).validate(value)
 
-        if value and value.find('@') == -1:
-            raise self._field_error('invalid email')
-        
+        if not value==None:
+            try:
+                if value.find('@') == -1:
+                    raise self._field_error('invalid email')
+            except AttributeError:
+                # if no 'find'-method found
+                raise self._field_error('invalid email')
+            
         return value
         
 
@@ -117,7 +122,7 @@ class PhoneField(Field):
     def validate(self, value):
         value = super(PhoneField, self).validate(value)
 
-        if value and (not value.startswith('7') or not len(value)==11):
+        if not value==None and not len(str(value))==11:
             raise self._field_error('invalid phone')
 
         return value
@@ -128,7 +133,7 @@ class DateField(Field):
     def validate(self, value):
         value = super(DateField, self).validate(value)
 
-        if value:
+        if not value==None:
             try:
                 value = datetime.strptime(value, '%d.%m.%Y')
             except ValueError:
@@ -142,7 +147,7 @@ class BirthDayField(DateField):
     def validate(self, value):
         value = super(BirthDayField, self).validate(value)
 
-        if value:
+        if not value==None:
             if datetime.now().year - value.year > 70:
                 raise self._field_error('invalid birth date (age must be <= 70)')
 
@@ -154,10 +159,10 @@ class IntField(Field):
     def validate(self, value):
         value = super(IntField, self).validate(value)
 
-        if value:
+        if not value==None:
             try:
                 value = int(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 raise self._field_error('is not integer')
 
         return value
@@ -167,10 +172,10 @@ class GenderField(IntField):
 
     def validate(self, value):
         value = super(GenderField, self).validate(value)
-        
-        if value:
-            if not int(value) in GENDERS.keys():
-                raise self._field_error('invalid gender (must be 0,1 or 2)')
+
+        if not value == None:
+            if not value in GENDERS.keys():
+                raise self._field_error('invalid gender (must be 0, 1 or 2)')
 
         return value
 
@@ -180,16 +185,17 @@ class ClientIDsField(Field):
     def validate(self, value):
         value = super(ClientIDsField, self).validate(value)
 
-        if value:
+        if not value==None:
             if not isinstance(value, list):
                 raise self._field_error('not list')
+            try:
+                value = [int(v) for v in value]
+            except (ValueError, TypeError):
+                raise self._field_error('values must be integers')
 
-            for i, v in enumerate(value):
-                try:
-                    value[i] = int(v)
-                except ValueError:
-                    raise self._field_error('values must be integers')
-
+            # for i, v in enumerate(value):
+            #         value[i] = int(v)
+                
         return value
 
 class ApiRequest(object):
