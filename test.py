@@ -132,6 +132,32 @@ class TestFields(unittest.TestCase):
             self.contaier.ids_field = ['1',None]
 
 
+def test_data_provider(data):
+    def test_decorator(func):
+        def test_wrapper(self):
+            # print(data)
+            for d in data:
+                try:
+                    print(d)
+                    func(self, d)
+                except AssertionError as e:
+                    raise AssertionError('%s. (data:%s)', e.message, repr(d))
+            
+        return test_wrapper 
+    return test_decorator
+
+
+class TestRequest(unittest.TestCase):
+
+    def setUp(self):
+        self.context = {}
+        self.headers = {}
+        self.store = None
+
+    @test_data_provider([{"method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'}])
+    def test_score(self, request_data):
+        response, code = api.method_handler({'body':request_data, 'headers':self.headers}, {}, None)
+
 
 class TestSuite(unittest.TestCase):
     def setUp(self):
@@ -146,7 +172,7 @@ class TestSuite(unittest.TestCase):
         _, code = self.get_response({})
         self.assertEqual(api.INVALID_REQUEST, code)
 
-    def test_auth_error(self):
+    def test_auth_error(self, ):
         request_data = {"account": "111", 
                         "login": "test", 
                         "token":'0', 
@@ -161,24 +187,12 @@ class TestSuite(unittest.TestCase):
         self.assertTrue(code, 403)
         self.assertEqual(response, 'Forbidden')
 
-
-    def test_method_online_score(self):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                        "method":"online_score",
-                        "arguments": {
-                            'phone':'79001112233', 
-                            'email':'test@test.test', 
-                            'first_name':'firstname', 
-                            'last_name':'lastname',
-                            'birthday':'01.01.1988',
-                            'gender':'0',
-                            }}
-
-        response, code = api.method_handler(request_data, {}, None)
-        
-
+    @test_data_provider([{"method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+                         {"method":"online_score", "arguments": {'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+                         {"method":"online_score", "arguments": {'email':'test@test.test', 'last_name':'lastname'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+        ])
+    def test_online_score(self, request_data):
+        response, code = self.get_response(request_data)
         self.assertIsInstance(response, dict)
         self.assertTrue(response.has_key('score'))
 
