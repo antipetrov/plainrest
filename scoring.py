@@ -28,5 +28,10 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
 
 
 def get_interests(store, cid):
-    r = store.get("i:%s" % cid)
+    try:
+        r = store.get("i:%s" % cid)
+    except Exception as e:
+        logging.error('get interests store error:%s', e.message)
+        return None
+        
     return json.loads(r) if r else []

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # 
-# 
 import logging
+from collections import namedtuple
+
 import tarantool
 
-
+CacheRecord = namedtuple('CacheRecord', ('key','value','ctime', 'ttl'))
+DataRecord = namedtuple('DataRecord', ('key','value'))
 
 class StoreTarantool(object):
     
@@ -60,11 +62,12 @@ class StoreTarantool(object):
     def get(self, key):
         self._refresh_connection()
 
-        rec = self.data_space.select(key)
-        if not len(rec.data):
+        response = self.data_space.select(key)
+        if not len(response.data):
             return None
-        
-        return rec[0][1]
+
+        rec = DataRecord(response[0])
+        return rec.value
 
 
     def set(self, key, value):
@@ -76,16 +79,23 @@ class StoreTarantool(object):
     def cache_get(self, key):
         self._refresh_connection()
 
-        rec = self.cache_space.select(key)
-        if not len(rec.data):
+        response = self.cache_space.select(key)
+        if not len(response.data):
             return None
 
-        return rec[0][1]
+        rec = CacheRecord(response.data[0])
+
+        ctime = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+        if rec.ttl > 0 and ctime - rec.ctime >= rec.ttl:
+            return None
+        else:
+            return rec.value
 
 
-    def cache_set(self, key, value):
+    def cache_set(self, key, value, ttl=0):
         self._refresh_connection()
+        ctime = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 
-        return self.cache_space.replace((key, value))
+        return self.cache_space.replace((key, value, ctime, ttl))
 
 # s:create_index('primary', {type='hash', parts={1, 'string'}})
