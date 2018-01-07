@@ -4,6 +4,7 @@
 import datetime
 import unittest
 import api
+import store
 
 cases = {api.CharField:{'success':[1,None, ]}}
 
@@ -291,6 +292,28 @@ class TestSuite(unittest.TestCase):
 
 
 
+class TestStore(unittest.TestCase):
+    def setUp(self):
+        self.db = store.StoreTarantool()
+
+    def test_store_write_read(self):
+        test_value = 'test_val'
+        self.db.set('test1', test_value)
+
+        value = self.db.get('test1')
+        self.assertEqual(value, test_value)
+
+    def test_store_cache_write_read(self):
+        test_value = 'test_val'
+        self.db.cache_set('test1', test_value)
+
+        value = self.db.cache_get('test1')
+        self.assertEqual(value, test_value)
+
+
+    def test_store_connection(self):
+        db = store.StoreTarantool(host='---')
+        self.assertEqual(db.connection, None)
 
 
 

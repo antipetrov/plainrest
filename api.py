@@ -12,6 +12,7 @@ from optparse import OptionParser
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 import scoring
+import store
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -201,11 +202,11 @@ class ClientIDsField(Field):
 class ApiRequest(object):
     
     def __init__(self, request_data):
-        self.request = request
+        self.request = request_data
         self.fields = {k:v for k,v in self.__class__.__dict__.iteritems() if issubclass(v.__class__, Field)}
 
         # check keys -  if all required data passed
-        requireds = set(k for k,v in self.__class__.__dict__.iteritems() if v.required)
+        requireds = set(k for k,v in self.fields.iteritems() if v.required)
         remains =  requireds - set(request_data.keys())
         if remains:
             raise ValidationError(message="required", field=requireds.pop())
@@ -370,7 +371,7 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
     router = {
         "method": method_handler
     }
-    store = None
+    store = store.StoreTarantool()
 
     def get_request_id(self, headers):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
