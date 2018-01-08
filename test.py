@@ -136,10 +136,8 @@ class TestFields(unittest.TestCase):
 def test_data_provider(data):
     def test_decorator(func):
         def test_wrapper(self):
-            # print(data)
             for d in data:
                 try:
-                    print(d)
                     func(self, d)
                 except AssertionError as e:
                     raise AssertionError('%s. (data:%s)', e.message, repr(d))
@@ -173,53 +171,38 @@ class TestSuite(unittest.TestCase):
         _, code = self.get_response({})
         self.assertEqual(api.INVALID_REQUEST, code)
 
-    def test_auth_error(self, ):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'0', 
-                        "method": "client_instrests", 
-                        "arguments": {
-                            "client_ids":['1','2'],
-                            "date":"-----"
-                            }}
-
+    @test_data_provider([
+        {"method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'0'},
+    ])
+    def test_auth_error(self, request_data):
         response, code = api.method_handler(request_data, {}, None)
 
         self.assertTrue(code, 403)
         self.assertEqual(response, 'Forbidden')
 
-    @test_data_provider([{"method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
-                         {"method":"online_score", "arguments": {'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
-                         {"method":"online_score", "arguments": {'email':'test@test.test', 'last_name':'lastname'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
-        ])
+    @test_data_provider([
+        {"method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+        {"method":"online_score", "arguments": {'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname', 'birthday':'01.01.1988', 'gender':'0'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+        {"method":"online_score", "arguments": {'email':'test@test.test', 'last_name':'lastname'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+    ])
     def test_online_score(self, request_data):
         response, code = self.get_response(request_data)
         self.assertIsInstance(response, dict)
         self.assertTrue(response.has_key('score'))
 
-    def test_method_online_score_error(self):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                        "method":"online_score",
-                        "arguments": {}}
-
+    @test_data_provider([
+        {"method":"online_score", "arguments": {}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+        {"method":"online_score", "arguments": {'email':'test@test.test'}, "account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5'},
+    ])
+    def test_method_online_score_error(self, request_data):
         response, code = api.method_handler(request_data, {}, None)
 
         self.assertEqual(code, 422)
-        self.assertTrue(response.find('phone') > -1)
 
-
-    def test_method_client_interests(self):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                        "method":"client_instrests",
-                        "arguments": {
-                            "client_ids":['1','2'],
-                            "date":"01.02.2008"
-                            }}
-
+    @test_data_provider([
+        {"account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', "method":"client_instrests", "arguments": {"client_ids":['1','2'], "date":"01.02.2008"}}
+    ])
+    def test_method_client_interests(self, request_data):
         response, code = api.method_handler(request_data, {}, None)
         
         self.assertEqual(code, 200)
@@ -227,70 +210,34 @@ class TestSuite(unittest.TestCase):
         self.assertTrue(response.has_key(1))
         self.assertTrue(response.has_key(2))
 
-    def test_method_client_interests_error(self):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                        "method":"client_instrests",
-                        "arguments": {
-                            "client_ids":['1','2'],
-                            "date":"-----"
-                            }}
-
+    @test_data_provider([
+        {"account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', "method":"client_instrests","arguments": {"client_ids":['1','2'],"date":"-----"}}
+    ])
+    def test_method_client_interests_error(self, request_error):
+        
         response, code = api.method_handler(request_data, {}, None)
         
         self.assertEqual(code, 422)
         self.assertTrue(response.find('date') > -1) # в ошибке упоминается имя пофейленного поля
 
-    def test_context_score(self):
-        request_data = {"account": "111", 
-                        "login": "test", 
-                        "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                        "method":"online_score",
-                        "arguments": {
-                            'phone':'79001112233', 
-                            'email':'test@test.test', 
-                            'first_name':'firstname', 
-                            'last_name':'lastname',
-                            'birthday':'01.01.1988',
-                            'gender':'0',
-                            }}
-
+    @test_data_provider([
+        {"account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', "method":"online_score", "arguments": {'phone':'79001112233', 'email':'test@test.test', 'first_name':'firstname', 'last_name':'lastname','birthday':'01.01.1988', 'gender':'0'}}
+    ])
+    def test_context_score(self, request_data):
         response, code = api.method_handler(request_data, self.context, None)
         
         self.assertEqual(self.context.has_key('has'), True)
         self.assertEqual(self.context['has'], request_data['arguments'].keys())
 
-    def test_context_interests(self):
-        request_data = {"account": "111", 
-                "login": "test", 
-                "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-                "method":"client_instrests",
-                "arguments": {
-                    "client_ids":['1','2'],
-                    "date":"01.02.2008"
-                    }}
-
+    @test_data_provider([
+        {"account": "111", "login": "test", "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', "method":"client_instrests", "arguments": {"client_ids":['1','2'],"date":"01.02.2008"}}
+    ])
+    def test_context_interests(self, request_data):
         response, code = api.method_handler(request_data, self.context, None)
         
         self.assertEqual(self.context.has_key('nclients'), True)
         self.assertEqual(self.context['nclients'], 2)
-
-    # def test_full_request(self):
-    #     request_data = {"account": "111", 
-    #                     "login": "test", 
-    #                     "token":'6909573a28d6b12900257df0064967141fb2cd5e82b6c269f3aaf49a0b450749e75872e4a717b90687e7f65bac6c59c0865ecafc467da803a634d5d0079ee9f5', 
-    #                     "method":"online_score",
-    #                     "arguments": {
-    #                         'phone':'79001112233', 
-    #                         'email':'test@test.test', 
-    #                         'first_name':'firstname', 
-    #                         'last_name':'lastname',
-    #                         'birthday':'01.01.1988',
-    #                         'gender':'0',
-    #                         }}        
-
-
+        
 
 class TestStore(unittest.TestCase):
     def setUp(self):

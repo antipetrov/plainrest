@@ -9,9 +9,14 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
         birthday.strftime("%Y%m%d"),
     ]
     key = "uid:" + hashlib.md5("".join(key_parts)).hexdigest()
+    
     # try get from cache,
     # fallback to heavy calculation in case of cache miss
-    score = store.cache_get(key) or 0
+    try:
+        score = store.cache_get(key)
+    except Exception:
+        score = 0
+
     if score:
         return score
     if phone:
@@ -22,8 +27,10 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
         score += 1.5
     if first_name and last_name:
         score += 0.5
+    
     # cache for 60 minutes
     store.cache_set(key, score,  60 * 60)
+
     return score
 
 
@@ -33,5 +40,5 @@ def get_interests(store, cid):
     except Exception as e:
         logging.error('get interests store error:%s', e.message)
         return None
-        
+
     return json.loads(r) if r else []
