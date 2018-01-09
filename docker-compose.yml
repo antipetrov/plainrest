@@ -1,0 +1,18 @@
+version: '2'
+
+services:
+  tarantool1:
+    image: tarantool/tarantool:1.7
+    volumes: 
+    - ./volume/tarantool:/var/lib/tarantool:Z
+    environment: 
+    - TARANTOOL_USER_NAME=score_user
+    - TARANTOOL_USER_PASSWORD=score_pass
+    networks:
+      - mynet
+    ports:
+      - "3301:3301"
+
+networks:
+  mynet:
+    driver: bridge

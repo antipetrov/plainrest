@@ -211,19 +211,10 @@ class ApiRequest(object):
         if remains:
             raise ValidationError(message="required", field=requireds.pop())
 
-
-        # assing and validate fields
+        # assign and validate fields
         for k,v in request_data.iteritems():
             try:
                 self.__setattr__(k, v) # field vailues get validated here
-            except FieldValidationError as e:
-                raise ValidationError(message=e.message, field=k)
-
-
-
-        for k,v in self.fields.iteritems():
-            try:
-                self.__setattr__(k, request_data.get(k,None)) # field vailues get validated here
             except FieldValidationError as e:
                 raise ValidationError(message=e.message, field=k)
 
@@ -250,7 +241,7 @@ class ClientsInterestsRequest(ApiRequest):
     def process(self, ctx=None, store=None):
         result = {}
         for cid in self.client_ids:
-            result[cid] = scoring.get_interests(None, cid)
+            result[cid] = scoring.get_interests(store, cid)
 
         ctx.update({'nclients':len(self.client_ids)})
         return result
@@ -346,7 +337,6 @@ def check_auth(request):
 
 
 def method_handler(request, ctx, store):
-
     try:
         api_request = MethodRequest(request['body'])
         response = api_request.process(ctx, store)
@@ -382,7 +372,8 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         try:
             data_string = self.rfile.read(int(self.headers['Content-Length']))
             request = json.loads(data_string)
-        except:
+        except Exception as e:
+            logging.error('request read error: %s', e.message)
             code = BAD_REQUEST
 
         if request:
@@ -420,7 +411,7 @@ if __name__ == "__main__":
     try:
         store = store.StoreTarantool()
     except Exception as e:
-        logging.info('Store init failed, starting with no store')
+        logging.info('Store init failed, starting with no store. Error: %s', e.message)
         store = None
 
     server = HTTPServer(("localhost", opts.port), MainHTTPHandler)

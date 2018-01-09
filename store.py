@@ -2,12 +2,20 @@
 # -*- coding: utf-8 -*-
 # 
 import logging
+import warnings
+import datetime
+import time
 from collections import namedtuple
 
 import tarantool
 
 CacheRecord = namedtuple('CacheRecord', ('key','value','ctime', 'ttl'))
 DataRecord = namedtuple('DataRecord', ('key','value'))
+
+warnings.simplefilter("ignore")
+
+class StoreError(Exception):
+    pass
 
 class StoreTarantool(object):
     
@@ -56,7 +64,7 @@ class StoreTarantool(object):
             except tarantool.error.NetworkError as e:
                 logging.error('tarantool connection error: %s', e.message)    
                 self.db = None
-                raise
+                raise StoreError('tarantool error: %s', e.message)
 
 
     def get(self, key):
@@ -66,7 +74,7 @@ class StoreTarantool(object):
         if not len(response.data):
             return None
 
-        rec = DataRecord(response[0])
+        rec = DataRecord(*response[0])
         return rec.value
 
 
@@ -83,7 +91,7 @@ class StoreTarantool(object):
         if not len(response.data):
             return None
 
-        rec = CacheRecord(response.data[0])
+        rec = CacheRecord(*response.data[0])
 
         ctime = int(time.mktime(datetime.datetime.utcnow().timetuple()))
         if rec.ttl > 0 and ctime - rec.ctime >= rec.ttl:

@@ -12,6 +12,7 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
     
     # try get from cache,
     # fallback to heavy calculation in case of cache miss
+    
     try:
         score = store.cache_get(key)
     except Exception:
@@ -29,16 +30,19 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
         score += 0.5
     
     # cache for 60 minutes
-    store.cache_set(key, score,  60 * 60)
+    try:
+        store.cache_set(key, score,  60 * 60)
+    except Exception:
+        pass
 
     return score
 
 
 def get_interests(store, cid):
-    try:
-        r = store.get("i:%s" % cid)
-    except Exception as e:
-        logging.error('get interests store error:%s', e.message)
-        return None
+    # try:
+    r = store.get("i:%s" % cid)
+    # except Exception as e:
+    #     logging.error('get_interests store error: %s', e.message)
+    #     raise
 
     return json.loads(r) if r else []
