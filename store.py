@@ -105,5 +105,3 @@ class StoreTarantool(object):
         ctime = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 
         return self.cache_space.replace((key, value, ctime, ttl))
-
-# s:create_index('primary', {type='hash', parts={1, 'string'}})

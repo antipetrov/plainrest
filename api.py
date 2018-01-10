@@ -200,8 +200,11 @@ class ClientIDsField(Field):
         return value
 
 class ApiRequest(object):
+
+    __metaclass__ = abc.ABCMeta
     
     def __init__(self, request_data):
+
         self.request = request_data
         self.fields = {k:v for k,v in self.__class__.__dict__.iteritems() if issubclass(v.__class__, Field)}
 
@@ -212,9 +215,9 @@ class ApiRequest(object):
             raise ValidationError(message="required", field=requireds.pop())
 
         # assign and validate fields
-        for k,v in request_data.iteritems():
+        for k,v in self.fields.iteritems():
             try:
-                self.__setattr__(k, v) # field vailues get validated here
+                self.__setattr__(k, request_data.get(k, None)) # field vailues get validated here
             except FieldValidationError as e:
                 raise ValidationError(message=e.message, field=k)
 
@@ -225,9 +228,11 @@ class ApiRequest(object):
     def __str__(self):
         return "<ApiRequest %s fields: >" % (self.__class__.__name__, " ".join(["%s:%s"%(k,v) for k,v in self.fields.iteritems()]))
 
+    @abc.abstractmethod
     def validate(self):
         raise NotImplementedError()
-
+    
+    @abc.abstractmethod
     def process(self, ctx=None, store=None):
         raise NotImplementedError()
 
@@ -260,6 +265,7 @@ class OnlineScoreRequest(ApiRequest):
         if (self.email and self.phone) or \
            (self.first_name and self.last_name) or \
            (self.birthday and self.gender):
+
            return self
 
         else:

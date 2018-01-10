@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import hashlib
 import json
 
@@ -39,10 +42,6 @@ def get_score(store, phone, email, birthday=None, gender=None, first_name=None, 
 
 
 def get_interests(store, cid):
-    # try:
     r = store.get("i:%s" % cid)
-    # except Exception as e:
-    #     logging.error('get_interests store error: %s', e.message)
-    #     raise
-
+    
     return json.loads(r) if r else []
