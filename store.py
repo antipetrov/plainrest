@@ -40,9 +40,21 @@ class StoreTarantool(object):
         self.db = None
         self._refresh_connection()
         
-        # todo: create spaces if none
-        self.data_space = self.db.space('data')
-        self.cache_space = self.db.space('cache')
+        # creating spaces if there are none
+        try:
+            self.data_space = self.db.space('data')
+        except tarantool.SchemaError:
+            self.db.eval("box.schema.space.create('data')")
+            self.db.eval("box.space.data:create_index('primary', { type = 'HASH', parts = {1, 'string'}})")
+            self.data_space = self.db.space('data')
+
+        try:
+            self.cache_space = self.db.space('cache')
+        except tarantool.SchemaError:
+            self.db.eval("box.schema.space.create('cache')")
+            self.db.eval("box.space.cache:create_index('primary', { type = 'HASH', parts = {1, 'string'}})")
+            self.cache_space = self.db.space('cache')
+
 
     def _refresh_connection(self):
         if self.db:

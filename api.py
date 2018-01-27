@@ -59,6 +59,8 @@ class AuthError(Exception):
 
 class Field(object):
 
+    __metaclass__ = abc.ABCMeta 
+
     def __init__(self, required=False, nullable=True):
         self.required = required
         self.nullable = nullable
@@ -75,6 +77,7 @@ class Field(object):
         message = "%s %s" % (self.__class__.__name__, message)
         return FieldValidationError(message)
 
+    @abc.abstractmethod
     def validate(self, value):
         if not self.nullable and value == None:
             raise self._field_error('cannot be None')
